@@ -8,7 +8,7 @@ class LoginDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Chat Login")
-        self.setFixedSize(400, 300)
+        self.setFixedSize(600, 500)
         self.setStyleSheet(LOGIN_DIALOG_STYLE)
 
         self.username = None
