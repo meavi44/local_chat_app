@@ -19,7 +19,7 @@ class ChatWindow(QMainWindow):
         self.current_chat = None  # 'user:username' or 'group:groupname'
         self.chat_history = {}  # Store chat history for each conversation
         self.user_groups = []  # Store user's groups with full info
-        self.client.file_received.connect(self.handle_file_received)
+        # self.client.file_received.connect(self.handle_file_received)
         self.setup_ui()
         self.setup_connections()
         self.setup_styles()
@@ -169,12 +169,14 @@ class ChatWindow(QMainWindow):
     def enable_input_controls(self):
         self.message_input.setEnabled(True)
         self.send_btn.setEnabled(True)
-        # Only enable file button for private chats
-        if self.current_chat and self.current_chat.startswith('user:'):
+        # Enable file button for both private and group chats
+        if self.current_chat and (self.current_chat.startswith('user:') or self.current_chat.startswith('group:')):
             self.file_btn.setEnabled(True)
         else:
             self.file_btn.setEnabled(False)
         self.message_input.setFocus()
+
+
 
     def disable_input_controls(self):
         self.message_input.setEnabled(False)
@@ -344,6 +346,44 @@ class ChatWindow(QMainWindow):
                         if is_group and receiver == name:
                             self.add_message_to_chat(sender, content, sent=(sender == self.client.username), timestamp=timestamp)
 
+            
+                # Load file records
+            files_url = f"http://localhost:8000/files/{self.client.username}"
+            files_response = requests.get(files_url)
+            if files_response.status_code == 200:
+                files = files_response.json()
+                for file_record in files:
+                    sender = file_record.get('sender')
+                    receiver = file_record.get('receiver')
+                    filename = file_record.get('filename')
+                    file_size = file_record.get('file_size', 0)
+                    timestamp = file_record.get('timestamp')
+                    is_group = file_record.get('is_group', False)
+                    
+                    file_size_mb = round(file_size / (1024 * 1024), 2) if file_size > 0 else 0
+                    
+                    # Display only relevant file records
+                    if chat_type == 'user':
+                        if ((sender == name and receiver == self.client.username) or 
+                            (sender == self.client.username and receiver == name)):
+                            if sender == self.client.username:
+                                file_message = f"📎 Sent file: {filename} ({file_size_mb}MB)"
+                            else:
+                                file_message = f"📎 Received file: {filename} ({file_size_mb}MB)"
+                            self.add_message_to_chat(sender, file_message, sent=(sender == self.client.username), timestamp=timestamp)
+                    elif chat_type == 'group':
+                        if is_group and receiver == name:
+                            if sender == self.client.username:
+                                file_message = f"📎 Sent file: {filename} ({file_size_mb}MB)"
+                            else:
+                                file_message = f"📎 Received file: {filename} ({file_size_mb}MB)"
+                            self.add_message_to_chat(sender, file_message, sent=(sender == self.client.username), timestamp=timestamp)
+            
+            
+            
+            
+            
+            
         except Exception as e:
             self.chat_display.append(f"❌ Error loading chat history: {str(e)}")
 
@@ -537,10 +577,10 @@ class ChatWindow(QMainWindow):
             self.client.disconnect()
         event.accept()
 
-    def handle_file_received(self, file_data):
-        """Handle received file - this is a simplified version for compatibility"""
-        # This method should call on_file_received with the proper format
-        self.on_file_received(file_data)
+    # def handle_file_received(self, file_data):
+    #     """Handle received file - this is a simplified version for compatibility"""
+    #     # This method should call on_file_received with the proper format
+    #     self.on_file_received(file_data)
 
 
 class GroupCreationDialog(QDialog):
